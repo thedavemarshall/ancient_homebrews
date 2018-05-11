@@ -1,0 +1,39 @@
+# rabbit holes all the way down
+# copied from https://gist.github.com/bennyfactor/34fa8619a02e01e36e68540c069f8590
+# had to update some things since homebrew/dupes is deprecated, and some of these formula don't work with high sierra
+# like previous authors, I cannot make any promises about what this might do to your system
+# here be dragons
+
+# This is based on https://gist.github.com/whitehat101/87c06c29dabfe15f094ec331b77a7c6d and https://solitum.net/openssl-os-x-el-capitan-and-brew/
+# I take no responsibility for the damage it may do to any other build system you run.
+
+# Uninstall everything critical to get back to baseline
+
+brew remove apple-gcc42
+rbenv uninstall ree-1.8.7-2012.02
+# also make sure any old versions of openssl you have installed thru brew are uninstalled
+
+# make sure you have all this crap installed, even though the build may not touch some of these
+brew install openssl libyaml libffi readline
+
+# reinstall gcc-42
+brew tap homebrew/dupes && brew install apple-gcc42
+
+# upgrade ruby-build, which you probably have already and may be the problem, this is a rats' nest
+brew upgrade ruby-build
+
+# install old openssl 0.9.8 because who cares about safety or anything, this is a development environment and we need old headers
+brew install https://github.com/Homebrew/homebrew-versions/raw/586b7e9012a3ed1f9df6c43d0483c65549349289/openssl098.rb
+
+# take yourself right into the danger zone with this one. Symlink the old openssl headers into your lib.
+# Rbenv install doesn't always honor ldflags for some reason (we will use them anyway later)
+cd /usr/local/include
+ln -s ../opt/openssl098/include/openssl .
+
+# install ree-187
+LDFLAGS="-L/usr/local/opt/openssl098/lib" CPPFLAGS="-I/usr/local/opt/openssl098/include" PKG_CONFIG_PATH="/usr/local/opt/openssl098/lib/pkgconfig" RUBY_CONFIGURE_OPTS=--with-readline-dir="$(brew --prefix readline)" rbenv install 1.8.7-p352
+
+# install a version of bundler that works with antique Gemfiles, but modern enough for rack-reverse-proxy-0.11.0 [bundler (~> 1.7)]
+gem install bundler -v 1.7.15
+
+# This worked for me. Builds native extensions again and everything. Will it work for you? Let's hope so. If not? Too bad.
